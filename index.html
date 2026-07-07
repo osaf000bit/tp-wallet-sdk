@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Decimal Wallet · SHOS</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo">◈</span>
+        <div>
+          <h1>Decimal Wallet</h1>
+          <p class="tagline">SHOS on BNB Smart Chain · TokenPocket protocol</p>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="card token-card">
+        <h2>SHOS Token</h2>
+        <dl class="token-meta">
+          <div><dt>Name</dt><dd id="tk-name">…</dd></div>
+          <div><dt>Symbol</dt><dd id="tk-symbol">…</dd></div>
+          <div><dt>Decimals</dt><dd id="tk-decimals">…</dd></div>
+          <div><dt>Total supply</dt><dd id="tk-supply">…</dd></div>
+          <div><dt>Cap</dt><dd id="tk-cap">…</dd></div>
+          <div class="wide">
+            <dt>Contract</dt>
+            <dd>
+              <a id="tk-contract-link" target="_blank" rel="noopener">
+                <code id="tk-contract">…</code>
+              </a>
+            </dd>
+          </div>
+        </dl>
+        <p id="token-status" class="status"></p>
+      </section>
+
+      <section class="card">
+        <h2>Balances</h2>
+        <label for="addr">BSC address</label>
+        <div class="row">
+          <input
+            id="addr"
+            type="text"
+            placeholder="0x…"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button id="check-btn" class="primary">Check</button>
+        </div>
+        <div class="balances">
+          <div class="balance">
+            <span class="balance-value" id="bal-bnb">—</span>
+            <span class="balance-label">BNB</span>
+          </div>
+          <div class="balance">
+            <span class="balance-value" id="bal-shos">—</span>
+            <span class="balance-label">SHOS</span>
+          </div>
+        </div>
+        <p id="bal-status" class="status"></p>
+      </section>
+
+      <section class="card">
+        <h2>Wallet actions</h2>
+        <p class="hint">
+          Generate a TokenPocket deeplink + QR. Open the link on a phone with
+          TokenPocket installed, or scan the QR from inside the app.
+        </p>
+
+        <div class="tabs">
+          <button class="tab active" data-tab="authorize">Login</button>
+          <button class="tab" data-tab="transfer">Transfer</button>
+        </div>
+
+        <div class="tab-panel" data-panel="authorize">
+          <button id="authorize-btn" class="primary">Build login request</button>
+        </div>
+
+        <div class="tab-panel hidden" data-panel="transfer">
+          <label for="to">Recipient</label>
+          <input id="to" type="text" placeholder="0x…" autocomplete="off" />
+          <label for="amount">Amount (SHOS)</label>
+          <input id="amount" type="number" min="0" step="any" value="1" />
+          <button id="transfer-btn" class="primary">Build transfer request</button>
+        </div>
+
+        <div id="result" class="result hidden">
+          <div id="qrcode" class="qrcode"></div>
+          <label>Deeplink</label>
+          <textarea id="deeplink" readonly rows="4"></textarea>
+          <div class="row">
+            <button id="copy-btn">Copy deeplink</button>
+            <a id="open-btn" class="button-link" href="#">Open in wallet</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        Demo dApp — does not hold private keys. Signing happens in TokenPocket.
+      </p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="config.js"></script>
+    <script src="sdk.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
