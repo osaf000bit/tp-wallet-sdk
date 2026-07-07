@@ -151,6 +151,9 @@ export function buildPushTransactionRequest(
       'provide only one of "payload", "actions" or "txData"'
     );
   }
+  if (options.payload !== undefined) assertNonEmptyString(options.payload, 'payload');
+  if (options.actions !== undefined) assertNonEmptyString(options.actions, 'actions');
+  if (options.txData !== undefined) assertNonEmptyString(options.txData, 'txData');
 
   const request: PushTransactionRequest = {
     ...base,

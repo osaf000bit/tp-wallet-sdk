@@ -57,11 +57,12 @@ export function encodeQrPayload(request: ProtocolRequest): string {
 
 /** Parse a protocol request out of a deeplink URL produced by {@link encodeDeeplink}. */
 export function decodeDeeplink(url: string): ProtocolRequest {
-  const queryStart = url.indexOf('?');
+  const withoutFragment = url.split('#')[0];
+  const queryStart = withoutFragment.indexOf('?');
   if (queryStart === -1) {
     throw new ValidationError('deeplink is missing a query string');
   }
-  const params = new URLSearchParams(url.slice(queryStart + 1));
+  const params = new URLSearchParams(withoutFragment.slice(queryStart + 1));
   const encoded = params.get(PARAM_KEY);
   if (encoded === null || encoded === '') {
     throw new ValidationError(`deeplink is missing the "${PARAM_KEY}" param`);

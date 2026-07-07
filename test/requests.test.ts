@@ -162,4 +162,10 @@ describe('buildPushTransactionRequest', () => {
       buildPushTransactionRequest({ ...base, payload: 'a', txData: 'b' })
     ).toThrow('provide only one of "payload", "actions" or "txData"');
   });
+
+  it('rejects an empty tx data field', () => {
+    expect(() =>
+      buildPushTransactionRequest({ ...base, txData: '' })
+    ).toThrow('"txData" must be a non-empty string');
+  });
 });
