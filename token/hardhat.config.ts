@@ -1,8 +1,16 @@
 import { HardhatUserConfig } from 'hardhat/config';
+import { HttpNetworkAccountsUserConfig } from 'hardhat/types';
 import '@nomicfoundation/hardhat-toolbox';
 
-const PRIVATE_KEY = process.env.PRIVATE_KEY;
-const accounts = PRIVATE_KEY ? [PRIVATE_KEY] : [];
+// Accept either a hex private key or a BIP-39 mnemonic in PRIVATE_KEY.
+function resolveAccounts(): HttpNetworkAccountsUserConfig {
+  const raw = process.env.PRIVATE_KEY?.trim();
+  if (!raw) return [];
+  if (raw.includes(' ')) return { mnemonic: raw };
+  return [raw.startsWith('0x') ? raw : `0x${raw}`];
+}
+
+const accounts = resolveAccounts();
 
 const config: HardhatUserConfig = {
   solidity: {
