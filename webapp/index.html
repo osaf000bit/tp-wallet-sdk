@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Decimal Wallet</title>
+    <link rel="icon" href="assets/shos.png" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <img class="logo-img" src="assets/shos.png" alt="SHOS" />
+          <div>
+            <h1>Decimal Wallet</h1>
+            <p class="sub">SHOS on BNB Smart Chain</p>
+          </div>
+        </div>
+        <button id="connect" class="primary">Connect Wallet</button>
+      </header>
+
+      <section id="connected" class="card account-card" hidden>
+        <div class="account-row">
+          <span class="muted small">Connected account</span>
+          <button id="disconnect" class="ghost">Disconnect</button>
+        </div>
+        <p id="account" class="account-addr">—</p>
+      </section>
+
+      <section class="card balance-card">
+        <p class="muted">Total Balance</p>
+        <h2 id="total-balance">$0.00</h2>
+        <p id="balance-note" class="muted small">Connect your wallet to begin.</p>
+      </section>
+
+      <section id="send-card" class="card" hidden>
+        <div class="section-head"><h3>Send</h3></div>
+        <label for="asset">Asset</label>
+        <select id="asset"></select>
+        <label for="to">Recipient address</label>
+        <input id="to" type="text" placeholder="0x…" autocomplete="off" spellcheck="false" />
+        <label for="amount">Amount</label>
+        <input id="amount" type="text" inputmode="decimal" placeholder="0.0" autocomplete="off" />
+        <button id="send" class="primary full">Send</button>
+        <p id="send-status" class="status" hidden></p>
+      </section>
+
+      <section class="card">
+        <div class="section-head">
+          <h3>Assets</h3>
+          <button id="refresh" class="ghost" disabled>Refresh</button>
+        </div>
+        <ul id="assets" class="assets">
+          <li class="empty">Not connected.</li>
+        </ul>
+      </section>
+
+      <footer class="footer">
+        Non-custodial demo wallet. Your keys stay in your wallet app; signing
+        happens there. Contract:
+        <a id="contract-link" href="#" target="_blank" rel="noopener">SHOS on BscScan</a>
+      </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
