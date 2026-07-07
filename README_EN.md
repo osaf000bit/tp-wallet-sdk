@@ -83,3 +83,43 @@ About "txData": [DEMO](https://github.com/TP-Lab/tp-wallet-sdk/blob/master/TxDat
 
 
 SDK details：https://github.com/TP-Lab/Mobile-SDK
+
+---
+
+## Reference TypeScript SDK
+
+This repo also ships a small, dependency-free reference implementation of the
+protocol above under `src/`. It builds protocol requests, encodes them into
+wallet deeplinks / QR payloads, and parses callback results.
+
+```bash
+npm install        # install dev dependencies
+npm test           # run the unit tests
+npm run test:coverage
+npm run build      # emit dist/
+```
+
+```ts
+import { TpWalletSdk } from 'tp-wallet-sdk';
+
+const sdk = new TpWalletSdk({ dappName: 'My DApp' });
+
+const req = sdk.transfer({
+  actionId: 'order-1',
+  blockchain: 'evm',
+  to: '0x5Da73693A062a11589F1b5c68434bf7eAff72366',
+  amount: 0.01,
+  callbackUrl: 'https://dapp.example/callback'
+});
+
+const deeplink = sdk.toDeeplink(req); // tpoutside://pull.activity?param=...
+```
+
+Modules:
+
+- `constants` – protocol name/version, action, blockchain and sign-type enums.
+- `types` – request/response TypeScript interfaces.
+- `validation` – field guards and network-targeting validation.
+- `requests` – builders for authorize / transfer / sign / push-transaction.
+- `encoding` – base64url + deeplink / QR (de)serialization.
+- `callback` – parsing and normalization of wallet callback results.
