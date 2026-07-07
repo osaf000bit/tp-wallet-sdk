@@ -1,0 +1,38 @@
+{
+  "name": "tp-wallet-sdk",
+  "version": "2.0.0",
+  "description": "Reference TypeScript SDK for the TokenPocket wallet protocol (authorize, transfer, sign, push transaction) with deeplink/QR encoding and callback parsing.",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\"",
+    "test": "jest",
+    "test:coverage": "jest --coverage"
+  },
+  "keywords": [
+    "tokenpocket",
+    "wallet",
+    "sdk",
+    "web3",
+    "evm",
+    "eos",
+    "tron",
+    "iost"
+  ],
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.14.0",
+    "@typescript-eslint/eslint-plugin": "^7.13.0",
+    "@typescript-eslint/parser": "^7.13.0",
+    "eslint": "^8.57.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.5",
+    "typescript": "^5.4.5"
+  }
+}
