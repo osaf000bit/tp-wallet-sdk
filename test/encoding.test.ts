@@ -65,6 +65,12 @@ describe('encodeDeeplink / decodeDeeplink', () => {
       `deeplink is missing the "${PARAM_KEY}" param`
     );
   });
+
+  it('ignores a trailing url fragment when decoding', () => {
+    const url = `${encodeDeeplink(sampleRequest)}#section`;
+    const decoded = decodeDeeplink(url);
+    expect(decoded).toEqual(sampleRequest);
+  });
 });
 
 describe('encodeQrPayload', () => {
