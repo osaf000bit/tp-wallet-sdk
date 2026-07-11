@@ -65,18 +65,31 @@
       maximumFractionDigits: 2
     });
   }
-  function fmtAmount(n) {
-    var num = Number(n);
-    if (num === 0) return '0';
-    if (num > 0 && num < 0.0001) return '<0.0001';
-    if (num >= 1e15) return num.toExponential(3);
-    if (num >= 1e9) {
-      return num.toLocaleString('en-US', {
-        notation: 'compact',
-        maximumFractionDigits: 2
-      });
+  function fmtAmount(amount, decimals) {
+    var s = String(amount);
+    var neg = s.charAt(0) === '-';
+    if (neg) s = s.slice(1);
+    var parts = s.split('.');
+    var intPart = parts[0] || '0';
+    var fracPart = parts[1] || '';
+    var target = 21;
+    if (typeof decimals === 'number' && decimals > target) target = decimals;
+    if (fracPart.length > target) {
+      fracPart = fracPart.slice(0, target);
+    } else if (fracPart.length < target) {
+      var zeros = '';
+      var needed = target - fracPart.length;
+      while (zeros.length < needed) zeros += '0';
+      fracPart += zeros;
     }
-    return num.toLocaleString('en-US', { maximumFractionDigits: 6 });
+    var groups = [];
+    var i = intPart.length;
+    while (i > 3) {
+      groups.unshift(intPart.slice(i - 3, i));
+      i -= 3;
+    }
+    groups.unshift(intPart.slice(0, i));
+    return (neg ? '-' : '') + groups.join(',') + '.' + fracPart;
   }
   function shortAddr(a) {
     return a.slice(0, 6) + '…' + a.slice(-4);
@@ -153,7 +166,7 @@
     right.className = 'asset-right';
     var amt = document.createElement('div');
     amt.className = 'asset-amount';
-    amt.textContent = fmtAmount(item.amount) + ' ' + item.symbol;
+    amt.textContent = fmtAmount(item.amount, item.decimals) + ' ' + item.symbol;
     var usd = document.createElement('div');
     usd.className = 'asset-usd';
     usd.textContent = item.usd === null ? 'price n/a' : fmtUsd(item.usd);
@@ -182,7 +195,7 @@
     items.forEach(function (it, idx) {
       var opt = document.createElement('option');
       opt.value = String(idx);
-      opt.textContent = it.symbol + ' — ' + fmtAmount(it.amount);
+      opt.textContent = it.symbol + ' — ' + fmtAmount(it.amount, it.decimals);
       els.asset.appendChild(opt);
     });
   }
@@ -220,7 +233,7 @@
         symbol: cfg.native.symbol,
         name: cfg.native.name,
         decimals: cfg.native.decimals,
-        amount: Number(ethers.formatUnits(nativeWei, cfg.native.decimals)),
+        amount: ethers.formatUnits(nativeWei, cfg.native.decimals),
         raw: nativeWei,
         coingeckoId: cfg.native.coingeckoId || null,
         staticUsdPrice: null,
@@ -241,7 +254,7 @@
         symbol: t.symbol || symbol,
         name: t.name || symbol,
         decimals: dec,
-        amount: Number(ethers.formatUnits(raw, dec)),
+        amount: ethers.formatUnits(raw, dec),
         raw: raw,
         coingeckoId: t.coingeckoId || null,
         staticUsdPrice: typeof t.staticUsdPrice === 'number' ? t.staticUsdPrice : null,
@@ -260,7 +273,7 @@
       var av = a.usd === null ? -1 : a.usd;
       var bv = b.usd === null ? -1 : b.usd;
       if (bv !== av) return bv - av;
-      return b.amount - a.amount;
+      return Number(b.amount) - Number(a.amount);
     });
 
     lastItems = items;
