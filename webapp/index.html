@@ -1,367 +1,78 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OSTAD WALLET</title>
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-  <!-- Corner ornaments -->
-  <div class="corner-ornaments">
-    <svg class="corner tl" viewBox="0 0 100 100"><path d="M0 0 L40 0 L40 5 L5 5 L5 40 L0 40 Z" fill="#d4af37"/><circle cx="20" cy="20" r="3" fill="#d4af37"/></svg>
-    <svg class="corner tr" viewBox="0 0 100 100"><path d="M100 0 L60 0 L60 5 L95 5 L95 40 L100 40 Z" fill="#d4af37"/><circle cx="80" cy="20" r="3" fill="#d4af37"/></svg>
-    <svg class="corner bl" viewBox="0 0 100 100"><path d="M0 100 L0 60 L5 60 L5 95 L40 95 L40 100 Z" fill="#d4af37"/><circle cx="20" cy="80" r="3" fill="#d4af37"/></svg>
-    <svg class="corner br" viewBox="0 0 100 100"><path d="M100 100 L100 60 L95 60 L95 95 L60 95 L60 100 Z" fill="#d4af37"/><circle cx="80" cy="80" r="3" fill="#d4af37"/></svg>
-  </div>
-
-  <div class="app">
-    <header>
-      <div class="header-icons">
-        <svg class="pillar-icon" width="60" height="60" viewBox="0 0 100 100">
-          <g fill="none" stroke="#d4af37" stroke-width="2.5">
-            <line x1="50" y1="15" x2="50" y2="75"/>
-            <ellipse cx="50" cy="12" rx="18" ry="5"/>
-            <path d="M28 75 Q50 62 72 75" stroke-width="3"/>
-            <path d="M20 82 L80 82" stroke-width="4"/>
-            <path d="M15 90 L85 90" stroke-width="5"/>
-            <circle cx="35" cy="35" r="4" fill="#d4af37" stroke="none"/>
-            <circle cx="65" cy="50" r="4" fill="#d4af37" stroke="none"/>
-          </g>
-        </svg>
-        <svg class="crown-icon" width="48" height="48" viewBox="0 0 100 100">
-          <g fill="#d4af37">
-            <path d="M15 70 L25 30 L40 50 L50 20 L60 50 L75 30 L85 70 Z"/>
-            <rect x="12" y="72" width="76" height="8" rx="2"/>
-            <circle cx="25" cy="28" r="4"/><circle cx="50" cy="16" r="5"/>
-            <circle cx="75" cy="28" r="4"/>
-          </g>
-        </svg>
-        <h1>OSTAD WALLET</h1>
-        <svg class="crown-icon" width="48" height="48" viewBox="0 0 100 100">
-          <g fill="#d4af37">
-            <path d="M15 70 L25 30 L40 50 L50 20 L60 50 L75 30 L85 70 Z"/>
-            <rect x="12" y="72" width="76" height="8" rx="2"/>
-            <circle cx="25" cy="28" r="4"/><circle cx="50" cy="16" r="5"/>
-            <circle cx="75" cy="28" r="4"/>
-          </g>
-        </svg>
-        <svg class="pillar-icon" width="60" height="60" viewBox="0 0 100 100">
-          <g fill="none" stroke="#d4af37" stroke-width="2.5">
-            <line x1="50" y1="15" x2="50" y2="75"/>
-            <ellipse cx="50" cy="12" rx="18" ry="5"/>
-            <path d="M28 75 Q50 62 72 75" stroke-width="3"/>
-            <path d="M20 82 L80 82" stroke-width="4"/>
-            <path d="M15 90 L85 90" stroke-width="5"/>
-            <circle cx="35" cy="35" r="4" fill="#d4af37" stroke="none"/>
-            <circle cx="65" cy="50" r="4" fill="#d4af37" stroke="none"/>
-          </g>
-        </svg>
-      </div>
-      <p class="subtitle">Inspired by the Glory of Cyrus the Great and the Achaemenid Empire</p>
-      <p class="description">Personal wallet for DecimalChain &mdash; Create/access wallet, send transactions, issue and restore tokens.<br/>Everything is calculated offline in your browser; your private key is never sent to any server.</p>
-      <p class="developer">Developed by <strong>Alireza Ostadzadeh</strong></p>
-      <div class="gold-dots">
-        <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-        <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-        <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-        <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-      </div>
-    </header>
-
-    <!-- Navigation (hidden until wallet is unlocked) -->
-    <nav id="main-nav" class="hidden">
-      <button class="nav-btn active" data-tab="wallet">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/><circle cx="18" cy="15" r="1.5"/></svg>
-        Wallet
-      </button>
-      <button class="nav-btn" data-tab="send">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
-        Send
-      </button>
-      <button class="nav-btn" data-tab="tokens">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v12"/><path d="M6 12h12"/></svg>
-        Tokens
-      </button>
-      <button class="nav-btn" data-tab="activity">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 7h8"/><path d="M8 12h8"/><path d="M8 17h5"/></svg>
-        Activity Log
-      </button>
-      <span class="network-badge">Mainnet</span>
-      <button class="nav-btn" data-tab="lock">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-        Lock
-      </button>
-    </nav>
-
-    <main>
-      <!-- Security Warning -->
-      <div class="card warning-card" id="security-warning">
-        <div class="warning-header">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d4af37" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          <strong>Security Warning</strong>
-        </div>
-        <p>Your mnemonic phrase and private key are equivalent to full access to your assets. Run this file only on your secure device, do not host it on public networks, and never ask anyone else to run it for you.</p>
-      </div>
-
-      <!-- Lock / Setup Page (shown first) -->
-      <section id="page-lock" class="page">
-        <div class="card">
-          <h2><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d4af37" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/></svg> 1) Wallet Setup</h2>
-          <div class="sub-tabs">
-            <button class="sub-tab active" data-setup="create">Create New Wallet</button>
-            <button class="sub-tab" data-setup="import">Import from Seed</button>
-            <button class="sub-tab" data-setup="unlock">Unlock Saved Wallet</button>
-          </div>
-
-          <div id="setup-create" class="setup-panel">
-            <p>A new 12-word recovery phrase will be generated for you.</p>
-            <button class="btn-gold" id="btn-create-wallet">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
-              Create New Wallet
-            </button>
-          </div>
-
-          <div id="setup-import" class="setup-panel hidden">
-            <label>Enter your 12-word recovery phrase</label>
-            <textarea id="import-seed" rows="3" placeholder="word1 word2 word3 ..."></textarea>
-            <button class="btn-gold" id="btn-import-wallet">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Import Wallet
-            </button>
-          </div>
-
-          <div id="setup-unlock" class="setup-panel hidden">
-            <label>Enter your encryption password</label>
-            <input type="password" id="unlock-password" placeholder="Password..." />
-            <button class="btn-gold" id="btn-unlock-wallet">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-              Unlock Wallet
-            </button>
-          </div>
-
-          <div class="form-group" style="margin-top:1.5rem;">
-            <label>Network</label>
-            <select id="network-select">
-              <option value="mainnet" selected>Mainnet</option>
-              <option value="testnet">Testnet</option>
-            </select>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Decimal Wallet</title>
+    <link rel="icon" href="assets/shos.png" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <img class="logo-img" src="assets/shos.png" alt="SHOS" />
+          <div>
+            <h1>Decimal Wallet</h1>
+            <p class="sub">SHOS on BNB Smart Chain</p>
           </div>
         </div>
+        <button id="connect" class="primary">Connect Wallet</button>
+      </header>
+
+      <section id="connected" class="card account-card" hidden>
+        <div class="account-row">
+          <span class="muted small">Connected account</span>
+          <button id="disconnect" class="ghost">Disconnect</button>
+        </div>
+        <p id="account" class="account-addr">—</p>
       </section>
 
-      <!-- Wallet Page -->
-      <section id="page-wallet" class="page hidden">
-        <!-- Balance Card -->
-        <div class="card balance-card">
-          <p class="balance-label">Total Balance</p>
-          <h2 class="balance-amount" id="total-balance">$0.00</h2>
-          <p class="balance-change" id="balance-change">+0.0% today</p>
-          <div class="action-buttons">
-            <button class="action-btn" id="btn-receive">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Receive
-            </button>
-            <button class="action-btn" id="btn-send-shortcut">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
-              Send
-            </button>
-            <button class="action-btn" id="btn-swap">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
-              Swap
-            </button>
-            <button class="action-btn" id="btn-buy">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
-              Buy
-            </button>
-          </div>
-        </div>
-
-        <!-- Wallet Info Card -->
-        <div class="card">
-          <h2><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d4af37" stroke-width="2"><path d="M15 7h3a5 5 0 015 5 5 5 0 01-5 5h-3m-6 0H6a5 5 0 01-5-5 5 5 0 015-5h3"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Wallet Information</h2>
-          <label>Wallet Address</label>
-          <div class="address-row">
-            <input type="text" id="wallet-address" readonly value="" />
-            <button class="icon-btn" id="btn-copy-addr" title="Copy address">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-            </button>
-          </div>
-          <div class="key-buttons">
-            <button class="btn-outline" id="btn-show-seed">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-              Show Recovery Phrase
-            </button>
-            <button class="btn-outline" id="btn-show-pk">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-              Show Private Key
-            </button>
-          </div>
-          <div id="seed-display" class="secret-display hidden"></div>
-          <div id="pk-display" class="secret-display hidden"></div>
-          <label>Save encrypted in this browser (optional)</label>
-          <div class="save-row">
-            <input type="password" id="encrypt-password" placeholder="Choose a password for encryption" />
-            <button class="btn-gold-sm" id="btn-save-encrypted">Save</button>
-          </div>
-        </div>
-
-        <!-- Asset Balances Card -->
-        <div class="card">
-          <div class="card-header-row">
-            <h3>Asset Balances</h3>
-            <button class="btn-outline-sm" id="btn-refresh-balances">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
-              Refresh
-            </button>
-          </div>
-          <div id="asset-list" class="asset-list"></div>
-        </div>
-
-        <!-- Recent Transactions Card -->
-        <div class="card">
-          <h3>Recent Transactions</h3>
-          <div id="tx-list" class="tx-list"></div>
-        </div>
+      <section class="card balance-card">
+        <p class="muted">Total Balance</p>
+        <h2 id="total-balance">$0.00</h2>
+        <p id="balance-note" class="muted small">Connect your wallet to begin.</p>
       </section>
 
-      <!-- Send Page -->
-      <section id="page-send" class="page hidden">
-        <div class="card">
-          <h2><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d4af37" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg> Send Coins / Tokens</h2>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Recipient Address</label>
-              <input type="text" id="send-to" placeholder="dx1..." />
-            </div>
-            <div class="form-group">
-              <label>Coin Symbol</label>
-              <input type="text" id="send-coin" placeholder="e.g., del or tdel" />
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Amount</label>
-              <input type="text" id="send-amount" placeholder="e.g., 1.5" />
-            </div>
-            <div class="form-group">
-              <label>Fee Coin (optional)</label>
-              <input type="text" id="send-fee" placeholder="e.g., del" />
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Note (optional)</label>
-            <textarea id="send-note" rows="3" placeholder="Add a note for this transaction..."></textarea>
-          </div>
-          <button class="btn-gold" id="btn-send-tx">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
-            Send Transaction
-          </button>
+      <section id="send-card" class="card" hidden>
+        <div class="section-head"><h3>Send</h3></div>
+        <label for="asset">Asset</label>
+        <div class="custom-select" id="asset-select">
+          <button type="button" class="select-trigger" id="asset-trigger">Select an asset</button>
+          <div class="select-options" id="asset-options"></div>
+          <input type="hidden" id="asset" />
         </div>
+        <label for="to">Recipient address</label>
+        <input id="to" type="text" placeholder="0x…" autocomplete="off" spellcheck="false" />
+        <label for="amount">Amount</label>
+        <input id="amount" type="text" inputmode="decimal" placeholder="0.0" autocomplete="off" />
+        <button id="send" class="primary full">Send</button>
+        <button id="convert" class="secondary full">Convert</button>
+        <p id="send-status" class="status" hidden></p>
       </section>
 
-      <!-- Tokens Page -->
-      <section id="page-tokens" class="page hidden">
-        <div class="card">
-          <h2><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d4af37" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v12"/><path d="M6 12h12"/></svg> Token Management</h2>
-          <div class="sub-tabs">
-            <button class="sub-tab active" data-token-tab="create">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
-              Create Token
-            </button>
-            <button class="sub-tab" data-token-tab="update">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              Update Token
-            </button>
-            <button class="sub-tab" data-token-tab="burn">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2c1 3 3 5 3 8a3 3 0 01-6 0c0-3 2-5 3-8z"/><path d="M6 18a6 6 0 0012 0c0-4-3-7-6-12-3 5-6 8-6 12z"/></svg>
-              Burn Token
-            </button>
-          </div>
-
-          <div id="token-create-panel" class="token-panel">
-            <div class="form-row">
-              <div class="form-group"><label>Token Name</label><input type="text" id="token-name" value="Ostad Token" /></div>
-              <div class="form-group"><label>Symbol (Ticker)</label><input type="text" id="token-symbol" value="SHOS" /></div>
-            </div>
-            <div class="form-row">
-              <div class="form-group"><label>Initial Supply</label><input type="text" id="token-supply" value="1,375,090,209,000,000" /></div>
-              <div class="form-group"><label>Decimal Precision</label><input type="text" id="token-decimals" value="18" /></div>
-            </div>
-            <div class="form-row">
-              <div class="form-group"><label>Min Reserve</label><input type="text" id="token-reserve" value="0" /></div>
-              <div class="form-group"><label>Max Supply</label><input type="text" id="token-max" value="1,375,090,209,000,000" /></div>
-            </div>
-            <button class="btn-gold" id="btn-create-token">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
-              Create Token
-            </button>
-          </div>
-
-          <div id="token-update-panel" class="token-panel hidden">
-            <div class="form-row">
-              <div class="form-group"><label>Token Symbol</label><input type="text" id="update-symbol" placeholder="e.g., SHOS" /></div>
-              <div class="form-group"><label>New Max Supply</label><input type="text" id="update-max" placeholder="e.g., 2,000,000,000" /></div>
-            </div>
-            <button class="btn-gold" id="btn-update-token">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              Update Token
-            </button>
-          </div>
-
-          <div id="token-burn-panel" class="token-panel hidden">
-            <div class="form-row">
-              <div class="form-group"><label>Token Symbol</label><input type="text" id="burn-symbol" placeholder="e.g., SHOS" /></div>
-              <div class="form-group"><label>Burn Amount</label><input type="text" id="burn-amount" placeholder="e.g., 1000" /></div>
-            </div>
-            <button class="btn-gold" id="btn-burn-token">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2c1 3 3 5 3 8a3 3 0 01-6 0c0-3 2-5 3-8z"/><path d="M6 18a6 6 0 0012 0c0-4-3-7-6-12-3 5-6 8-6 12z"/></svg>
-              Burn Token
-            </button>
-          </div>
+      <section class="card">
+        <div class="section-head">
+          <h3>Assets</h3>
+          <button id="refresh" class="ghost" disabled>Refresh</button>
         </div>
+        <ul id="assets" class="assets">
+          <li class="empty">Not connected.</li>
+        </ul>
       </section>
 
-      <!-- Activity Log Page -->
-      <section id="page-activity" class="page hidden">
-        <div class="card">
-          <h2><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d4af37" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 7h8"/><path d="M8 12h8"/><path d="M8 17h5"/></svg> Activity Log</h2>
-          <div id="activity-log" class="activity-log"></div>
-        </div>
-      </section>
+      <footer class="footer">
+        <p>
+          Non-custodial demo wallet. Your keys stay in your wallet app; signing
+          happens there. Contract:
+          <a id="contract-link" href="#" target="_blank" rel="noopener">SHOS on BscScan</a>
+        </p>
+        <p class="creator">Created by Engineer Alireza Ostadzadeh</p>
+      </footer>
+    </div>
 
-      <!-- Receive Modal -->
-      <div id="receive-modal" class="modal hidden">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h3>Receive</h3>
-            <button class="modal-close" id="close-receive">&times;</button>
-          </div>
-          <p>Share your address to receive coins:</p>
-          <div class="address-row">
-            <input type="text" id="receive-addr" readonly />
-            <button class="icon-btn" id="btn-copy-receive">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-            </button>
-          </div>
-          <div id="receive-qr" class="qr-container"></div>
-        </div>
-      </div>
-    </main>
-
-    <footer>
-      <svg class="pillar-icon-sm" width="24" height="24" viewBox="0 0 100 100">
-        <g fill="none" stroke="#d4af37" stroke-width="3"><line x1="50" y1="15" x2="50" y2="75"/><path d="M20 82 L80 82" stroke-width="4"/><path d="M15 90 L85 90" stroke-width="5"/></g>
-      </svg>
-      <p>Designed with inspiration from the Achaemenid Empire</p>
-      <svg class="pillar-icon-sm" width="24" height="24" viewBox="0 0 100 100">
-        <g fill="none" stroke="#d4af37" stroke-width="3"><line x1="50" y1="15" x2="50" y2="75"/><path d="M20 82 L80 82" stroke-width="4"/><path d="M15 90 L85 90" stroke-width="5"/></g>
-      </svg>
-      <p class="footer-sub">Powered by DecimalChain | OSTAD WALLET | Developed by <strong>Alireza Ostadzadeh</strong></p>
-    </footer>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-  <script src="app.js"></script>
-</body>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+  </body>
 </html>

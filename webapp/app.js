@@ -1,363 +1,539 @@
+/* Decimal Wallet — non-custodial. Connects to an injected wallet (TokenPocket
+ * dApp browser, MetaMask, etc.), reads live balances from BSC and lets the user
+ * send BNB / tokens. Private keys never leave the user's wallet app. */
 (function () {
   'use strict';
 
-  // ── Wallet State ──────────────────────────
-  var wallet = {
-    address: '',
-    mnemonic: '',
-    privateKey: '',
-    network: 'mainnet',
-    assets: [
-      { symbol: 'SHOS', name: 'Ostad Token', amount: '1,375,090,209,000,000', usd: '$1,375,090,209,000,000.00', change: '+15.5%' },
-      { symbol: 'USDT', name: 'Tether', amount: '1,000,000,000.00', usd: '$1,000,000,000.00', change: '+0.1%' },
-      { symbol: 'DEL', name: 'Decimal', amount: '10,000,000.00', usd: '$100,000,000.00', change: '+5.2%' },
-      { symbol: 'BTC', name: 'Bitcoin', amount: '1,000.00', usd: '$60,000,000.00', change: '+2.8%' },
-      { symbol: 'ETH', name: 'Ethereum', amount: '10,000.00', usd: '$25,000,000.00', change: '+3.1%' }
-    ],
-    transactions: [
-      { type: 'in', amount: '+500,000,000 USDT', addr: 'From dx1abc...', time: '2 hours ago', status: 'confirmed' },
-      { type: 'out', amount: '+100,000,000 SHOS', addr: 'To dx1def...', time: '5 hours ago', status: 'confirmed' },
-      { type: 'in', amount: '+200,000,000 USDT', addr: 'From dx1ghi...', time: '1 day ago', status: 'confirmed' },
-      { type: 'out', amount: '-50,000,000 SHOS', addr: 'To dx1jkl...', time: '2 days ago', status: 'pending' },
-      { type: 'in', amount: '+10 BTC', addr: 'From dx1mno...', time: '3 days ago', status: 'confirmed' },
-      { type: 'out', amount: '-150,000,000 USDT', addr: 'To dx1pqr...', time: '4 days ago', status: 'confirmed' }
-    ],
-    logs: []
+  var cfg = window.DECIMAL_WALLET_CONFIG;
+  var CHAIN_ID = Number(cfg.chainId);
+  var CHAIN_HEX = '0x' + CHAIN_ID.toString(16);
+
+  var ERC20_ABI = [
+    'function name() view returns (string)',
+    'function symbol() view returns (string)',
+    'function decimals() view returns (uint8)',
+    'function balanceOf(address) view returns (uint256)',
+    'function transfer(address to, uint256 value) returns (bool)'
+  ];
+  var MULTICALL3 = '0xcA11bde05977b3631167028862bE2a173976CA11';
+  var MULTICALL3_ABI = [
+    'function aggregate3((address target, bool allowFailure, bytes callData)[] calls) view returns ((bool success, bytes returnData)[])',
+    'function getEthBalance(address addr) view returns (uint256)'
+  ];
+
+  // Read-only provider for balance queries (batching disabled; we use Multicall3).
+  var readProvider = new ethers.JsonRpcProvider(cfg.rpcUrl, CHAIN_ID, {
+    batchMaxCount: 1
+  });
+  var erc20Iface = new ethers.Interface(ERC20_ABI);
+  var mcIface = new ethers.Interface(MULTICALL3_ABI);
+  var multicall = new ethers.Contract(MULTICALL3, MULTICALL3_ABI, readProvider);
+
+  var browserProvider = null;
+  var account = null;
+  var lastItems = []; // loaded assets (for the Send dropdown)
+  var isConnected = false;
+  var handlers = null;
+
+  var els = {
+    connect: document.getElementById('connect'),
+    disconnect: document.getElementById('disconnect'),
+    connected: document.getElementById('connected'),
+    account: document.getElementById('account'),
+    refresh: document.getElementById('refresh'),
+    total: document.getElementById('total-balance'),
+    note: document.getElementById('balance-note'),
+    assets: document.getElementById('assets'),
+    sendCard: document.getElementById('send-card'),
+    asset: document.getElementById('asset'),
+    assetSelect: document.getElementById('asset-select'),
+    assetTrigger: document.getElementById('asset-trigger'),
+    assetOptions: document.getElementById('asset-options'),
+    to: document.getElementById('to'),
+    amount: document.getElementById('amount'),
+    send: document.getElementById('send'),
+    convert: document.getElementById('convert'),
+    sendStatus: document.getElementById('send-status'),
+    contractLink: document.getElementById('contract-link')
   };
 
-  // ── Helpers ───────────────────────────────
-  function $(id) { return document.getElementById(id); }
-  function $$(sel) { return document.querySelectorAll(sel); }
+  var shos = cfg.tokens.find(function (t) {
+    return (t.symbol || '').toUpperCase() === 'SHOS';
+  });
+  if (shos) els.contractLink.href = cfg.explorer + '/token/' + shos.address;
 
-  function generateAddress() {
-    var chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    var addr = 'dx1';
-    for (var i = 0; i < 38; i++) addr += chars[Math.floor(Math.random() * chars.length)];
-    return addr;
-  }
-
-  function generateMnemonic() {
-    var words = [
-      'abandon','ability','able','about','above','absent','absorb','abstract',
-      'absurd','abuse','access','accident','account','accuse','achieve','acid',
-      'acoustic','acquire','across','act','action','actor','actress','actual',
-      'adapt','add','addict','address','adjust','admit','adult','advance',
-      'advice','aerobic','affair','afford','afraid','again','age','agent',
-      'agree','ahead','aim','air','airport','aisle','alarm','album',
-      'alcohol','alert','alien','all','alley','allow','almost','alone',
-      'alpha','already','also','alter','always','amateur','amazing','among',
-      'amount','amused','analyst','anchor','ancient','anger','angle','angry',
-      'animal','ankle','announce','annual','another','answer','antenna','antique'
-    ];
-    var selected = [];
-    for (var i = 0; i < 12; i++) selected.push(words[Math.floor(Math.random() * words.length)]);
-    return selected.join(' ');
-  }
-
-  function generatePrivateKey() {
-    var hex = '0123456789abcdef';
-    var key = '';
-    for (var i = 0; i < 64; i++) key += hex[Math.floor(Math.random() * 16)];
-    return key;
-  }
-
-  function addLog(msg, type) {
-    var now = new Date();
-    var ts = now.getFullYear() + '-' +
-      String(now.getMonth() + 1).padStart(2, '0') + '-' +
-      String(now.getDate()).padStart(2, '0') + ' ' +
-      String(now.getHours()).padStart(2, '0') + ':' +
-      String(now.getMinutes()).padStart(2, '0') + ':' +
-      String(now.getSeconds()).padStart(2, '0');
-    wallet.logs.push({ time: ts, msg: msg, type: type || '' });
-    renderActivityLog();
-  }
-
-  // ── Render Functions ──────────────────────
-  function renderAssets() {
-    var html = '';
-    wallet.assets.forEach(function (a) {
-      html += '<div class="asset-item">' +
-        '<div class="asset-icon">' + a.symbol.charAt(0) + '</div>' +
-        '<div class="asset-info"><div class="asset-symbol">' + a.symbol + '</div><div class="asset-name">' + a.name + '</div></div>' +
-        '<div class="asset-values"><div class="asset-amount">' + a.amount + '</div><div class="asset-usd">' + a.usd + '</div><div class="asset-change">' + a.change + '</div></div>' +
-        '</div>';
-    });
-    $('asset-list').innerHTML = html;
-  }
-
-  function renderTransactions() {
-    var html = '';
-    wallet.transactions.forEach(function (tx) {
-      var isIn = tx.type === 'in';
-      var amountClass = tx.amount.startsWith('-') ? 'negative' : 'positive';
-      html += '<div class="tx-item">' +
-        '<div class="tx-icon ' + (isIn ? 'incoming' : 'outgoing') + '">' +
-          (isIn ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>'
-                : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>') +
-        '</div>' +
-        '<div class="tx-info"><div class="tx-amount ' + amountClass + '">' + tx.amount + '</div><div class="tx-addr">' + tx.addr + '</div></div>' +
-        '<div class="tx-meta"><div class="tx-time">' + tx.time + '</div><span class="tx-status ' + tx.status + '">' + tx.status.charAt(0).toUpperCase() + tx.status.slice(1) + '</span></div>' +
-        '</div>';
-    });
-    $('tx-list').innerHTML = html;
-  }
-
-  function renderActivityLog() {
-    var html = '';
-    wallet.logs.forEach(function (log) {
-      html += '<div class="log-entry"><span class="log-time">[' + log.time + ']</span><span class="log-msg ' + log.type + '">' + log.msg + '</span></div>';
-    });
-    $('activity-log').innerHTML = html;
-    var el = $('activity-log');
-    el.scrollTop = el.scrollHeight;
-  }
-
-  // ── Navigation ────────────────────────────
-  function showPage(name) {
-    $$('.page').forEach(function (p) { p.classList.add('hidden'); });
-    var page = $('page-' + name);
-    if (page) page.classList.remove('hidden');
-
-    $$('.nav-btn').forEach(function (b) {
-      b.classList.toggle('active', b.getAttribute('data-tab') === name);
+  /* ---------- formatting helpers ---------- */
+  function fmtUsd(n) {
+    return '$' + Number(n).toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
     });
   }
-
-  function initNav() {
-    $$('.nav-btn').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var tab = btn.getAttribute('data-tab');
-        if (tab === 'lock') {
-          lockWallet();
-        } else {
-          showPage(tab);
-        }
-      });
-    });
+  function fmtAmount(amount, decimals) {
+    var s = String(amount);
+    var neg = s.charAt(0) === '-';
+    if (neg) s = s.slice(1);
+    var parts = s.split('.');
+    var intPart = parts[0] || '0';
+    var fracPart = parts[1] || '';
+    var target = 21;
+    if (typeof decimals === 'number' && decimals > target) target = decimals;
+    if (fracPart.length > target) {
+      fracPart = fracPart.slice(0, target);
+    } else if (fracPart.length < target) {
+      var zeros = '';
+      var needed = target - fracPart.length;
+      while (zeros.length < needed) zeros += '0';
+      fracPart += zeros;
+    }
+    var groups = [];
+    var i = intPart.length;
+    while (i > 3) {
+      groups.unshift(intPart.slice(i - 3, i));
+      i -= 3;
+    }
+    groups.unshift(intPart.slice(0, i));
+    return (neg ? '-' : '') + groups.join(',') + '.' + fracPart;
   }
-
-  // ── Wallet Setup ──────────────────────────
-  function unlockUI() {
-    $('main-nav').classList.remove('hidden');
-    $('security-warning').classList.remove('hidden');
-    showPage('wallet');
-    $('wallet-address').value = wallet.address;
-    $('receive-addr') && ($('receive-addr').value = wallet.address);
-    $('total-balance').textContent = '$1,375,091,394,000,000.00';
-    $('balance-change').textContent = '+3.2% today';
-    renderAssets();
-    renderTransactions();
+  function shortAddr(a) {
+    return a.slice(0, 6) + '…' + a.slice(-4);
   }
-
-  function lockWallet() {
-    $('main-nav').classList.add('hidden');
-    $$('.page').forEach(function (p) { p.classList.add('hidden'); });
-    $('page-lock').classList.remove('hidden');
-    $('seed-display').classList.add('hidden');
-    $('pk-display').classList.add('hidden');
-    addLog('Wallet locked', 'info');
-  }
-
-  function createWallet() {
-    wallet.address = generateAddress();
-    wallet.mnemonic = generateMnemonic();
-    wallet.privateKey = generatePrivateKey();
-    addLog('Ostad Wallet created successfully', 'success');
-    addLog('Address generated: ' + wallet.address.substring(0, 12) + '...', '');
-    addLog('Balance synced: SHOS=1,375,090,209,000,000, USDT=1,000,000,000', 'info');
-    addLog('Token SHOS (Ostad Token) initialized', 'success');
-    unlockUI();
-  }
-
-  function importWallet() {
-    var seed = $('import-seed').value.trim();
-    if (!seed || seed.split(/\s+/).length < 12) {
-      alert('Please enter a valid 12-word recovery phrase.');
+  function setStatus(msg, kind) {
+    if (!msg) {
+      els.sendStatus.hidden = true;
+      els.sendStatus.textContent = '';
+      els.sendStatus.className = 'status';
       return;
     }
-    wallet.mnemonic = seed;
-    wallet.address = generateAddress();
-    wallet.privateKey = generatePrivateKey();
-    addLog('Wallet imported from seed phrase', 'success');
-    addLog('Address generated: ' + wallet.address.substring(0, 12) + '...', '');
-    unlockUI();
+    els.sendStatus.hidden = false;
+    els.sendStatus.textContent = msg;
+    els.sendStatus.className = 'status' + (kind ? ' ' + kind : '');
   }
 
-  function unlockSaved() {
-    var pw = $('unlock-password').value;
-    if (!pw) { alert('Please enter a password.'); return; }
-    var saved = localStorage.getItem('ostad_wallet_enc');
-    if (!saved) { alert('No saved wallet found. Create or import one first.'); return; }
+  /* ---------- balances (read-only via Multicall3) ---------- */
+  function decodeOrNull(fn, data) {
     try {
-      var decoded = atob(saved);
-      var data = JSON.parse(decoded);
-      wallet.address = data.address || generateAddress();
-      wallet.mnemonic = data.mnemonic || '';
-      wallet.privateKey = data.privateKey || '';
-      addLog('Wallet unlocked from encrypted storage', 'success');
-      unlockUI();
+      return erc20Iface.decodeFunctionResult(fn, data)[0];
     } catch (e) {
-      alert('Failed to decrypt wallet. Wrong password or corrupted data.');
+      return null;
     }
   }
 
-  // ── Setup Tab Switching ───────────────────
-  function initSetupTabs() {
-    $$('[data-setup]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        $$('[data-setup]').forEach(function (b) { b.classList.remove('active'); });
-        btn.classList.add('active');
-        var panel = btn.getAttribute('data-setup');
-        $('setup-create').classList.toggle('hidden', panel !== 'create');
-        $('setup-import').classList.toggle('hidden', panel !== 'import');
-        $('setup-unlock').classList.toggle('hidden', panel !== 'unlock');
-      });
-    });
+  async function fetchPrices(ids) {
+    var unique = ids.filter(function (v, i) { return v && ids.indexOf(v) === i; });
+    if (unique.length === 0) return {};
+    try {
+      var url =
+        'https://api.coingecko.com/api/v3/simple/price?ids=' +
+        encodeURIComponent(unique.join(',')) + '&vs_currencies=usd';
+      var res = await fetch(url);
+      if (!res.ok) return {};
+      var data = await res.json();
+      var out = {};
+      Object.keys(data).forEach(function (k) { out[k] = data[k].usd; });
+      return out;
+    } catch (e) {
+      return {};
+    }
   }
 
-  // ── Token Tab Switching ───────────────────
-  function initTokenTabs() {
-    $$('[data-token-tab]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        $$('[data-token-tab]').forEach(function (b) { b.classList.remove('active'); });
-        btn.classList.add('active');
-        var panel = btn.getAttribute('data-token-tab');
-        $('token-create-panel').classList.toggle('hidden', panel !== 'create');
-        $('token-update-panel').classList.toggle('hidden', panel !== 'update');
-        $('token-burn-panel').classList.toggle('hidden', panel !== 'burn');
-      });
-    });
+  function assetRow(item) {
+    var li = document.createElement('li');
+    li.className = 'asset';
+
+    var left = document.createElement('div');
+    left.className = 'asset-left';
+    var badge;
+    if ((item.symbol || '').toUpperCase() === 'SHOS') {
+      badge = document.createElement('img');
+      badge.className = 'badge-img';
+      badge.src = 'assets/shos.png';
+      badge.alt = 'SHOS';
+    } else {
+      badge = document.createElement('span');
+      badge.className = 'badge';
+      badge.textContent = (item.symbol || '?').slice(0, 4);
+    }
+    var meta = document.createElement('div');
+    var sym = document.createElement('div');
+    sym.className = 'asset-symbol';
+    sym.textContent = item.symbol;
+    var name = document.createElement('div');
+    name.className = 'asset-name';
+    name.textContent = item.name || '';
+    meta.appendChild(sym);
+    meta.appendChild(name);
+    left.appendChild(badge);
+    left.appendChild(meta);
+
+    var right = document.createElement('div');
+    right.className = 'asset-right';
+    var amt = document.createElement('div');
+    amt.className = 'asset-amount';
+    amt.textContent = fmtAmount(item.amount, item.decimals) + ' ' + item.symbol;
+    var usd = document.createElement('div');
+    usd.className = 'asset-usd';
+    usd.textContent = item.usd === null ? 'price n/a' : fmtUsd(item.usd);
+    right.appendChild(amt);
+    right.appendChild(usd);
+
+    li.appendChild(left);
+    li.appendChild(right);
+    return li;
   }
 
-  // ── Actions ───────────────────────────────
-  function initActions() {
-    $('btn-create-wallet').addEventListener('click', createWallet);
-    $('btn-import-wallet').addEventListener('click', importWallet);
-    $('btn-unlock-wallet').addEventListener('click', unlockSaved);
-
-    $('btn-copy-addr').addEventListener('click', function () {
-      navigator.clipboard.writeText(wallet.address).then(function () {
-        addLog('Address copied to clipboard', 'info');
-      });
-    });
-
-    $('btn-show-seed').addEventListener('click', function () {
-      var el = $('seed-display');
-      if (el.classList.contains('hidden')) {
-        el.textContent = wallet.mnemonic;
-        el.classList.remove('hidden');
-      } else {
-        el.classList.add('hidden');
-      }
-    });
-
-    $('btn-show-pk').addEventListener('click', function () {
-      var el = $('pk-display');
-      if (el.classList.contains('hidden')) {
-        el.textContent = wallet.privateKey;
-        el.classList.remove('hidden');
-      } else {
-        el.classList.add('hidden');
-      }
-    });
-
-    $('btn-save-encrypted').addEventListener('click', function () {
-      var pw = $('encrypt-password').value;
-      if (!pw) { alert('Please enter a password for encryption.'); return; }
-      var data = JSON.stringify({ address: wallet.address, mnemonic: wallet.mnemonic, privateKey: wallet.privateKey });
-      localStorage.setItem('ostad_wallet_enc', btoa(data));
-      addLog('Wallet saved encrypted in browser', 'success');
-      alert('Wallet saved successfully!');
-    });
-
-    $('btn-refresh-balances').addEventListener('click', function () {
-      addLog('Balance synced: SHOS=1,375,090,209,000,000, USDT=1,000,000,000', 'info');
-      renderAssets();
-    });
-
-    $('btn-receive').addEventListener('click', function () {
-      $('receive-addr').value = wallet.address;
-      $('receive-modal').classList.remove('hidden');
-      var qrBox = $('receive-qr');
-      qrBox.innerHTML = '';
-      if (typeof QRCode !== 'undefined') {
-        new QRCode(qrBox, { text: wallet.address, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M });
-      }
-    });
-
-    $('close-receive').addEventListener('click', function () {
-      $('receive-modal').classList.add('hidden');
-    });
-    $('receive-modal').addEventListener('click', function (e) {
-      if (e.target === $('receive-modal')) $('receive-modal').classList.add('hidden');
-    });
-
-    $('btn-copy-receive').addEventListener('click', function () {
-      navigator.clipboard.writeText(wallet.address);
-    });
-
-    $('btn-send-shortcut').addEventListener('click', function () { showPage('send'); });
-    $('btn-swap').addEventListener('click', function () { alert('Swap feature coming soon!'); });
-    $('btn-buy').addEventListener('click', function () { alert('Buy feature coming soon!'); });
-
-    $('btn-send-tx').addEventListener('click', function () {
-      var to = $('send-to').value.trim();
-      var coin = $('send-coin').value.trim();
-      var amount = $('send-amount').value.trim();
-      if (!to || !coin || !amount) { alert('Please fill in recipient, coin, and amount.'); return; }
-      addLog('Transaction sent: ' + amount + ' ' + coin.toUpperCase() + ' \u2192 ' + to.substring(0, 10) + '...', '');
-      addLog('Transaction confirmed: hash=0x' + generatePrivateKey().substring(0, 8) + '...', 'success');
-      wallet.transactions.unshift({
-        type: 'out', amount: '-' + amount + ' ' + coin.toUpperCase(),
-        addr: 'To ' + to.substring(0, 10) + '...', time: 'Just now', status: 'confirmed'
-      });
-      renderTransactions();
-      $('send-to').value = '';
-      $('send-coin').value = '';
-      $('send-amount').value = '';
-      $('send-note').value = '';
-      alert('Transaction sent successfully!');
-    });
-
-    $('btn-create-token').addEventListener('click', function () {
-      var name = $('token-name').value;
-      var sym = $('token-symbol').value;
-      addLog('Token ' + sym + ' (' + name + ') created successfully', 'success');
-      alert('Token ' + sym + ' created!');
-    });
-
-    $('btn-update-token').addEventListener('click', function () {
-      var sym = $('update-symbol').value.trim();
-      if (!sym) { alert('Please enter a token symbol.'); return; }
-      addLog('Token ' + sym + ' updated', 'info');
-      alert('Token ' + sym + ' updated!');
-    });
-
-    $('btn-burn-token').addEventListener('click', function () {
-      var sym = $('burn-symbol').value.trim();
-      var amt = $('burn-amount').value.trim();
-      if (!sym || !amt) { alert('Please fill in symbol and amount.'); return; }
-      addLog('Burned ' + amt + ' ' + sym, 'info');
-      alert('Burned ' + amt + ' ' + sym + '!');
-    });
-
-    $('network-select').addEventListener('change', function () {
-      wallet.network = this.value;
-      $$('.network-badge').forEach(function (b) {
-        b.textContent = wallet.network.charAt(0).toUpperCase() + wallet.network.slice(1);
-      });
-    });
+  function renderAssets(items) {
+    els.assets.innerHTML = '';
+    if (items.length === 0) {
+      var li = document.createElement('li');
+      li.className = 'empty';
+      li.textContent = 'No balances found.';
+      els.assets.appendChild(li);
+      return;
+    }
+    items.forEach(function (it) { els.assets.appendChild(assetRow(it)); });
   }
 
-  // ── Init ──────────────────────────────────
-  document.addEventListener('DOMContentLoaded', function () {
-    initNav();
-    initSetupTabs();
-    initTokenTabs();
-    initActions();
-    showPage('lock');
-    addLog('OSTAD WALLET initialized', 'success');
-    addLog('Ready for wallet setup', '');
+  function formatSelectLabel(it) {
+    return it.symbol + ' — ' + fmtAmount(it.amount, it.decimals);
+  }
+
+  function populateAssetSelect(items) {
+    els.asset.value = '';
+    els.assetOptions.innerHTML = '';
+    items.forEach(function (it, idx) {
+      var div = document.createElement('div');
+      div.className = 'select-option';
+      div.dataset.value = String(idx);
+      div.textContent = formatSelectLabel(it);
+      div.addEventListener('click', function () {
+        els.asset.value = div.dataset.value;
+        els.assetTrigger.textContent = formatSelectLabel(it);
+        els.assetOptions.classList.remove('open');
+        Array.from(els.assetOptions.children).forEach(function (c) { c.classList.remove('selected'); });
+        div.classList.add('selected');
+      });
+      els.assetOptions.appendChild(div);
+    });
+    if (items.length) {
+      els.asset.value = '0';
+      els.assetTrigger.textContent = formatSelectLabel(items[0]);
+      els.assetOptions.children[0].classList.add('selected');
+    } else {
+      els.assetTrigger.textContent = 'Select an asset';
+    }
+  }
+
+  function toggleAssetSelect() {
+    els.assetOptions.classList.toggle('open');
+  }
+
+  document.addEventListener('click', function (e) {
+    if (!els.assetTrigger || !els.assetOptions) return;
+    if (!els.assetSelect.contains(e.target) && !els.assetTrigger.contains(e.target)) {
+      els.assetOptions.classList.remove('open');
+    }
   });
+  els.assetTrigger.addEventListener('click', toggleAssetSelect);
+
+  async function loadBalances() {
+    if (!account) return;
+    els.note.textContent = 'Loading live balances…';
+    els.assets.innerHTML = '<li class="empty">Loading…</li>';
+
+    var priceIds = [];
+    if (cfg.native.coingeckoId) priceIds.push(cfg.native.coingeckoId);
+    cfg.tokens.forEach(function (t) { if (t.coingeckoId) priceIds.push(t.coingeckoId); });
+    var pricesPromise = fetchPrices(priceIds);
+
+    var calls = [];
+    calls.push({
+      target: MULTICALL3,
+      allowFailure: true,
+      callData: mcIface.encodeFunctionData('getEthBalance', [account])
+    });
+    cfg.tokens.forEach(function (t) {
+      calls.push({ target: t.address, allowFailure: true, callData: erc20Iface.encodeFunctionData('symbol', []) });
+      calls.push({ target: t.address, allowFailure: true, callData: erc20Iface.encodeFunctionData('decimals', []) });
+      calls.push({ target: t.address, allowFailure: true, callData: erc20Iface.encodeFunctionData('balanceOf', [account]) });
+    });
+
+    var results = await multicall.aggregate3.staticCall(calls);
+    var prices = await pricesPromise;
+
+    var items = [];
+    if (results[0].success) {
+      var nativeWei = mcIface.decodeFunctionResult('getEthBalance', results[0].returnData)[0];
+      items.push({
+        kind: 'native',
+        symbol: cfg.native.symbol,
+        name: cfg.native.name,
+        decimals: cfg.native.decimals,
+        amount: ethers.formatUnits(nativeWei, cfg.native.decimals),
+        raw: nativeWei,
+        coingeckoId: cfg.native.coingeckoId || null,
+        staticUsdPrice: null,
+        usd: null
+      });
+    }
+    cfg.tokens.forEach(function (t, i) {
+      var base = 1 + i * 3;
+      if (!results[base].success || !results[base + 1].success || !results[base + 2].success) return;
+      var symbol = decodeOrNull('symbol', results[base].returnData);
+      var decimals = decodeOrNull('decimals', results[base + 1].returnData);
+      var raw = decodeOrNull('balanceOf', results[base + 2].returnData);
+      if (symbol === null || decimals === null || raw === null) return;
+      var dec = Number(decimals);
+      items.push({
+        kind: 'token',
+        address: t.address,
+        symbol: t.symbol || symbol,
+        name: t.name || symbol,
+        decimals: dec,
+        amount: ethers.formatUnits(raw, dec),
+        raw: raw,
+        coingeckoId: t.coingeckoId || null,
+        staticUsdPrice: typeof t.staticUsdPrice === 'number' ? t.staticUsdPrice : null,
+        usd: null
+      });
+    });
+
+    var total = 0;
+    items.forEach(function (it) {
+      var price = null;
+      if (it.staticUsdPrice !== null) price = it.staticUsdPrice;
+      else if (it.coingeckoId && prices[it.coingeckoId] !== undefined) price = prices[it.coingeckoId];
+      if (price !== null) { it.usd = it.amount * price; total += it.usd; }
+    });
+    items.sort(function (a, b) {
+      var av = a.usd === null ? -1 : a.usd;
+      var bv = b.usd === null ? -1 : b.usd;
+      if (bv !== av) return bv - av;
+      return Number(b.amount) - Number(a.amount);
+    });
+
+    lastItems = items;
+    renderAssets(items);
+    populateAssetSelect(items);
+    els.total.textContent = fmtUsd(total);
+    var priced = items.filter(function (i) { return i.usd !== null; }).length;
+    els.note.textContent = items.length + ' assets · ' + priced + ' with live USD price';
+  }
+
+  /* ---------- wallet connection ---------- */
+  function getInjected() {
+    return window.ethereum || null;
+  }
+
+  async function ensureChain(eth) {
+    try {
+      var current = await eth.request({ method: 'eth_chainId' });
+      if (current && current.toLowerCase() === CHAIN_HEX) return;
+      await eth.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: CHAIN_HEX }]
+      });
+    } catch (e) {
+      // 4902 = chain not added; try to add BSC.
+      if (e && e.code === 4902) {
+        await eth.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: CHAIN_HEX,
+            chainName: 'BNB Smart Chain',
+            nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
+            rpcUrls: [cfg.rpcUrl],
+            blockExplorerUrls: [cfg.explorer]
+          }]
+        });
+      }
+      // Non-fatal: reads still use our own RPC. Sends will prompt anyway.
+    }
+  }
+
+  function onConnected(addr) {
+    var newAddr = ethers.getAddress(addr);
+    if (isConnected && account === newAddr) return;
+    isConnected = true;
+    account = newAddr;
+    els.account.textContent = account;
+    els.connected.hidden = false;
+    els.sendCard.hidden = false;
+    els.connect.textContent = shortAddr(account);
+    els.refresh.disabled = false;
+    loadBalances().catch(function (e) {
+      els.note.textContent = 'Failed to load balances: ' + e.message;
+    });
+  }
+
+  function onDisconnected() {
+    if (!isConnected) return;
+    isConnected = false;
+    account = null;
+    lastItems = [];
+    els.connected.hidden = true;
+    els.sendCard.hidden = true;
+    els.connect.textContent = 'Connect Wallet';
+    els.refresh.disabled = true;
+    els.total.textContent = '$0.00';
+    els.note.textContent = 'Connect your wallet to begin.';
+    els.assets.innerHTML = '<li class="empty">Not connected.</li>';
+    setStatus('');
+    unregisterListeners(getInjected());
+    browserProvider = null;
+  }
+
+  function handleAccountsChanged(accs) {
+    if (!isConnected) return;
+    if (accs && accs.length) onConnected(accs[0]);
+    else onDisconnected();
+  }
+
+  function handleChainChanged() {
+    if (isConnected && account) loadBalances().catch(function () {});
+  }
+
+  function registerListeners(eth) {
+    unregisterListeners(eth);
+    if (eth && eth.on) {
+      handlers = {
+        accounts: handleAccountsChanged,
+        chain: handleChainChanged
+      };
+      eth.on('accountsChanged', handlers.accounts);
+      eth.on('chainChanged', handlers.chain);
+    }
+  }
+
+  function unregisterListeners(eth) {
+    if (eth && handlers && eth.removeListener) {
+      try {
+        eth.removeListener('accountsChanged', handlers.accounts);
+        eth.removeListener('chainChanged', handlers.chain);
+      } catch (e) { /* ignore */ }
+    }
+    handlers = null;
+  }
+
+  async function connect() {
+    var eth = getInjected();
+    if (!eth) {
+      alert(
+        'No wallet detected. Open this page inside the TokenPocket dApp browser ' +
+        '(or a browser with MetaMask) and try again.'
+      );
+      return;
+    }
+    els.connect.disabled = true;
+    try {
+      registerListeners(eth);
+      var accounts = await eth.request({ method: 'eth_requestAccounts' });
+      await ensureChain(eth);
+      browserProvider = new ethers.BrowserProvider(eth, 'any');
+      if (accounts && accounts.length) onConnected(accounts[0]);
+    } catch (e) {
+      setStatus('Connection failed: ' + (e.message || e), 'err');
+    } finally {
+      els.connect.disabled = false;
+    }
+  }
+
+  /* ---------- send ---------- */
+  async function send() {
+    if (!account || !browserProvider) return;
+    setStatus('');
+    var item = lastItems[Number(els.asset.value || '0')];
+    if (!item) { setStatus('Select an asset.', 'err'); return; }
+
+    var to = els.to.value.trim();
+    if (!ethers.isAddress(to)) { setStatus('Enter a valid recipient address.', 'err'); return; }
+    to = ethers.getAddress(to);
+
+    var amountStr = els.amount.value.trim();
+    var value;
+    try {
+      value = ethers.parseUnits(amountStr, item.decimals);
+    } catch (e) {
+      setStatus('Enter a valid amount.', 'err');
+      return;
+    }
+    if (value <= 0n) { setStatus('Amount must be greater than 0.', 'err'); return; }
+    if (item.raw !== undefined && value > item.raw) {
+      setStatus('Amount exceeds your ' + item.symbol + ' balance.', 'err');
+      return;
+    }
+
+    els.send.disabled = true;
+    setStatus('Confirm the transaction in your wallet…', 'muted');
+    try {
+      var signer = await browserProvider.getSigner();
+      var tx;
+      if (item.kind === 'native') {
+        tx = await signer.sendTransaction({ to: to, value: value });
+      } else {
+        var c = new ethers.Contract(item.address, ERC20_ABI, signer);
+        tx = await c.transfer(to, value);
+      }
+      setStatus('Submitted: ' + tx.hash + ' — waiting for confirmation…', 'muted');
+      await tx.wait();
+      var link = cfg.explorer + '/tx/' + tx.hash;
+      els.sendStatus.hidden = false;
+      els.sendStatus.className = 'status ok';
+      els.sendStatus.textContent = 'Sent ' + amountStr + ' ' + item.symbol + '. ';
+      var a = document.createElement('a');
+      a.href = link;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = 'View on BscScan →';
+      els.sendStatus.appendChild(a);
+      els.amount.value = '';
+      loadBalances().catch(function () {});
+    } catch (e) {
+      var reason = e && (e.shortMessage || e.message) ? (e.shortMessage || e.message) : 'failed';
+      setStatus('Transaction failed: ' + reason, 'err');
+    } finally {
+      els.send.disabled = false;
+    }
+  }
+
+  function convert() {
+    if (!lastItems.length) { setStatus('Select an asset.', 'err'); return; }
+    var item = lastItems[Number(els.asset.value || '0')];
+    if (!item) { setStatus('Select an asset.', 'err'); return; }
+    var shosToken = cfg.tokens.find(function (t) { return (t.symbol || '').toUpperCase() === 'SHOS'; });
+    var shosAddr = shosToken ? shosToken.address : '';
+    var input = item.kind === 'native' ? 'BNB' : (item.address || '');
+    var output = shosAddr;
+    if (item.symbol && item.symbol.toUpperCase() === 'SHOS') {
+      input = shosAddr;
+      output = 'BNB';
+    }
+    if (!input || !output) { setStatus('Cannot build swap link for this asset.', 'err'); return; }
+    var url = 'https://pancakeswap.finance/swap?chain=bsc&inputCurrency=' + encodeURIComponent(input) + '&outputCurrency=' + encodeURIComponent(output);
+    window.open(url, '_blank');
+  }
+
+  /* ---------- wire up ---------- */
+  els.connect.addEventListener('click', connect);
+  els.disconnect.addEventListener('click', onDisconnected);
+  els.refresh.addEventListener('click', function () {
+    loadBalances().catch(function () {});
+  });
+  els.send.addEventListener('click', send);
+  els.convert.addEventListener('click', convert);
+
+  // Auto-reconnect if the wallet already authorized this site.
+  (async function () {
+    var eth = getInjected();
+    if (!eth || !eth.request) return;
+    try {
+      registerListeners(eth);
+      var accounts = await eth.request({ method: 'eth_accounts' });
+      if (accounts && accounts.length) {
+        await ensureChain(eth);
+        browserProvider = new ethers.BrowserProvider(eth, 'any');
+        onConnected(accounts[0]);
+      }
+    } catch (e) { /* ignore */ }
+  })();
 })();
