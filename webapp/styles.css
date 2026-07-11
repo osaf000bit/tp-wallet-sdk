@@ -68,20 +68,66 @@ body {
   color: var(--text);
 }
 
-select {
+.custom-select {
+  position: relative;
   width: 100%;
+  margin-bottom: 6px;
+}
+
+.select-trigger {
+  width: 100%;
+  text-align: left;
   background: var(--panel-2);
   border: 1px solid var(--border);
   border-radius: 10px;
   color: var(--text);
   padding: 12px;
   font-size: 14px;
-  margin-bottom: 6px;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  min-height: 44px;
 }
 
-select:focus {
+.select-trigger:focus {
   outline: none;
   border-color: var(--gold);
+}
+
+.select-options {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
+
+.select-options.open {
+  display: block;
+}
+
+.select-option {
+  padding: 12px;
+  font-size: 14px;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+}
+
+.select-option:last-child {
+  border-bottom: none;
+}
+
+.select-option:hover,
+.select-option.selected {
+  background: var(--panel);
 }
 
 button.full {
@@ -176,6 +222,12 @@ button {
 button.primary {
   background: var(--gold);
   color: #0b0e11;
+}
+
+button.secondary {
+  background: transparent;
+  color: var(--gold);
+  border: 1px solid var(--gold);
 }
 
 button.ghost {
@@ -355,4 +407,10 @@ h3 {
 
 .footer a {
   color: var(--gold);
+}
+
+.footer .creator {
+  margin-top: 8px;
+  font-weight: 600;
+  color: var(--text);
 }

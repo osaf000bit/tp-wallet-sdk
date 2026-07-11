@@ -37,12 +37,17 @@
       <section id="send-card" class="card" hidden>
         <div class="section-head"><h3>Send</h3></div>
         <label for="asset">Asset</label>
-        <select id="asset"></select>
+        <div class="custom-select" id="asset-select">
+          <button type="button" class="select-trigger" id="asset-trigger">Select an asset</button>
+          <div class="select-options" id="asset-options"></div>
+          <input type="hidden" id="asset" />
+        </div>
         <label for="to">Recipient address</label>
         <input id="to" type="text" placeholder="0x…" autocomplete="off" spellcheck="false" />
         <label for="amount">Amount</label>
         <input id="amount" type="text" inputmode="decimal" placeholder="0.0" autocomplete="off" />
         <button id="send" class="primary full">Send</button>
+        <button id="convert" class="secondary full">Convert</button>
         <p id="send-status" class="status" hidden></p>
       </section>
 
@@ -57,9 +62,12 @@
       </section>
 
       <footer class="footer">
-        Non-custodial demo wallet. Your keys stay in your wallet app; signing
-        happens there. Contract:
-        <a id="contract-link" href="#" target="_blank" rel="noopener">SHOS on BscScan</a>
+        <p>
+          Non-custodial demo wallet. Your keys stay in your wallet app; signing
+          happens there. Contract:
+          <a id="contract-link" href="#" target="_blank" rel="noopener">SHOS on BscScan</a>
+        </p>
+        <p class="creator">Created by Engineer Alireza Ostadzadeh</p>
       </footer>
     </div>
 

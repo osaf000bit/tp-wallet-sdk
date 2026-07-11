@@ -46,9 +46,13 @@
     assets: document.getElementById('assets'),
     sendCard: document.getElementById('send-card'),
     asset: document.getElementById('asset'),
+    assetSelect: document.getElementById('asset-select'),
+    assetTrigger: document.getElementById('asset-trigger'),
+    assetOptions: document.getElementById('asset-options'),
     to: document.getElementById('to'),
     amount: document.getElementById('amount'),
     send: document.getElementById('send'),
+    convert: document.getElementById('convert'),
     sendStatus: document.getElementById('send-status'),
     contractLink: document.getElementById('contract-link')
   };
@@ -190,15 +194,47 @@
     items.forEach(function (it) { els.assets.appendChild(assetRow(it)); });
   }
 
-  function populateAssetSelect(items) {
-    els.asset.innerHTML = '';
-    items.forEach(function (it, idx) {
-      var opt = document.createElement('option');
-      opt.value = String(idx);
-      opt.textContent = it.symbol + ' — ' + fmtAmount(it.amount, it.decimals);
-      els.asset.appendChild(opt);
-    });
+  function formatSelectLabel(it) {
+    return it.symbol + ' — ' + fmtAmount(it.amount, it.decimals);
   }
+
+  function populateAssetSelect(items) {
+    els.asset.value = '';
+    els.assetOptions.innerHTML = '';
+    items.forEach(function (it, idx) {
+      var div = document.createElement('div');
+      div.className = 'select-option';
+      div.dataset.value = String(idx);
+      div.textContent = formatSelectLabel(it);
+      div.addEventListener('click', function () {
+        els.asset.value = div.dataset.value;
+        els.assetTrigger.textContent = formatSelectLabel(it);
+        els.assetOptions.classList.remove('open');
+        Array.from(els.assetOptions.children).forEach(function (c) { c.classList.remove('selected'); });
+        div.classList.add('selected');
+      });
+      els.assetOptions.appendChild(div);
+    });
+    if (items.length) {
+      els.asset.value = '0';
+      els.assetTrigger.textContent = formatSelectLabel(items[0]);
+      els.assetOptions.children[0].classList.add('selected');
+    } else {
+      els.assetTrigger.textContent = 'Select an asset';
+    }
+  }
+
+  function toggleAssetSelect() {
+    els.assetOptions.classList.toggle('open');
+  }
+
+  document.addEventListener('click', function (e) {
+    if (!els.assetTrigger || !els.assetOptions) return;
+    if (!els.assetSelect.contains(e.target) && !els.assetTrigger.contains(e.target)) {
+      els.assetOptions.classList.remove('open');
+    }
+  });
+  els.assetTrigger.addEventListener('click', toggleAssetSelect);
 
   async function loadBalances() {
     if (!account) return;
@@ -406,7 +442,7 @@
   async function send() {
     if (!account || !browserProvider) return;
     setStatus('');
-    var item = lastItems[Number(els.asset.value)];
+    var item = lastItems[Number(els.asset.value || '0')];
     if (!item) { setStatus('Select an asset.', 'err'); return; }
 
     var to = els.to.value.trim();
@@ -460,6 +496,23 @@
     }
   }
 
+  function convert() {
+    if (!lastItems.length) { setStatus('Select an asset.', 'err'); return; }
+    var item = lastItems[Number(els.asset.value || '0')];
+    if (!item) { setStatus('Select an asset.', 'err'); return; }
+    var shosToken = cfg.tokens.find(function (t) { return (t.symbol || '').toUpperCase() === 'SHOS'; });
+    var shosAddr = shosToken ? shosToken.address : '';
+    var input = item.kind === 'native' ? 'BNB' : (item.address || '');
+    var output = shosAddr;
+    if (item.symbol && item.symbol.toUpperCase() === 'SHOS') {
+      input = shosAddr;
+      output = 'BNB';
+    }
+    if (!input || !output) { setStatus('Cannot build swap link for this asset.', 'err'); return; }
+    var url = 'https://pancakeswap.finance/swap?chain=bsc&inputCurrency=' + encodeURIComponent(input) + '&outputCurrency=' + encodeURIComponent(output);
+    window.open(url, '_blank');
+  }
+
   /* ---------- wire up ---------- */
   els.connect.addEventListener('click', connect);
   els.disconnect.addEventListener('click', onDisconnected);
@@ -467,6 +520,7 @@
     loadBalances().catch(function () {});
   });
   els.send.addEventListener('click', send);
+  els.convert.addEventListener('click', convert);
 
   // Auto-reconnect if the wallet already authorized this site.
   (async function () {
