@@ -32,6 +32,8 @@
   var browserProvider = null;
   var account = null;
   var lastItems = []; // loaded assets (for the Send dropdown)
+  var isConnected = false;
+  var handlers = null;
 
   var els = {
     connect: document.getElementById('connect'),
@@ -301,7 +303,10 @@
   }
 
   function onConnected(addr) {
-    account = ethers.getAddress(addr);
+    var newAddr = ethers.getAddress(addr);
+    if (isConnected && account === newAddr) return;
+    isConnected = true;
+    account = newAddr;
     els.account.textContent = account;
     els.connected.hidden = false;
     els.sendCard.hidden = false;
@@ -313,6 +318,8 @@
   }
 
   function onDisconnected() {
+    if (!isConnected) return;
+    isConnected = false;
     account = null;
     lastItems = [];
     els.connected.hidden = true;
@@ -323,6 +330,40 @@
     els.note.textContent = 'Connect your wallet to begin.';
     els.assets.innerHTML = '<li class="empty">Not connected.</li>';
     setStatus('');
+    unregisterListeners(getInjected());
+    browserProvider = null;
+  }
+
+  function handleAccountsChanged(accs) {
+    if (!isConnected) return;
+    if (accs && accs.length) onConnected(accs[0]);
+    else onDisconnected();
+  }
+
+  function handleChainChanged() {
+    if (isConnected && account) loadBalances().catch(function () {});
+  }
+
+  function registerListeners(eth) {
+    unregisterListeners(eth);
+    if (eth && eth.on) {
+      handlers = {
+        accounts: handleAccountsChanged,
+        chain: handleChainChanged
+      };
+      eth.on('accountsChanged', handlers.accounts);
+      eth.on('chainChanged', handlers.chain);
+    }
+  }
+
+  function unregisterListeners(eth) {
+    if (eth && handlers && eth.removeListener) {
+      try {
+        eth.removeListener('accountsChanged', handlers.accounts);
+        eth.removeListener('chainChanged', handlers.chain);
+      } catch (e) { /* ignore */ }
+    }
+    handlers = null;
   }
 
   async function connect() {
@@ -336,20 +377,11 @@
     }
     els.connect.disabled = true;
     try {
+      registerListeners(eth);
       var accounts = await eth.request({ method: 'eth_requestAccounts' });
       await ensureChain(eth);
       browserProvider = new ethers.BrowserProvider(eth, 'any');
       if (accounts && accounts.length) onConnected(accounts[0]);
-
-      if (eth.on) {
-        eth.on('accountsChanged', function (accs) {
-          if (accs && accs.length) onConnected(accs[0]);
-          else onDisconnected();
-        });
-        eth.on('chainChanged', function () {
-          if (account) loadBalances().catch(function () {});
-        });
-      }
     } catch (e) {
       setStatus('Connection failed: ' + (e.message || e), 'err');
     } finally {
@@ -398,9 +430,13 @@
       var link = cfg.explorer + '/tx/' + tx.hash;
       els.sendStatus.hidden = false;
       els.sendStatus.className = 'status ok';
-      els.sendStatus.innerHTML =
-        'Sent ' + amountStr + ' ' + item.symbol + '. ' +
-        '<a href="' + link + '" target="_blank" rel="noopener">View on BscScan →</a>';
+      els.sendStatus.textContent = 'Sent ' + amountStr + ' ' + item.symbol + '. ';
+      var a = document.createElement('a');
+      a.href = link;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = 'View on BscScan →';
+      els.sendStatus.appendChild(a);
       els.amount.value = '';
       loadBalances().catch(function () {});
     } catch (e) {
@@ -424,8 +460,10 @@
     var eth = getInjected();
     if (!eth || !eth.request) return;
     try {
+      registerListeners(eth);
       var accounts = await eth.request({ method: 'eth_accounts' });
       if (accounts && accounts.length) {
+        await ensureChain(eth);
         browserProvider = new ethers.BrowserProvider(eth, 'any');
         onConnected(accounts[0]);
       }
