@@ -2,12 +2,26 @@ import { HardhatUserConfig } from 'hardhat/config';
 import { HttpNetworkAccountsUserConfig } from 'hardhat/types';
 import '@nomicfoundation/hardhat-toolbox';
 
-// Accept either a hex private key or a BIP-39 mnemonic in PRIVATE_KEY.
+// Accept either a valid-length BIP-39 mnemonic or a 32-byte hex private key.
+// Never log or otherwise expose the secret.
 function resolveAccounts(): HttpNetworkAccountsUserConfig {
-  const raw = process.env.PRIVATE_KEY?.trim();
-  if (!raw) return [];
-  if (raw.includes(' ')) return { mnemonic: raw };
-  return [raw.startsWith('0x') ? raw : `0x${raw}`];
+  const raw = process.env.PRIVATE_KEY;
+  if (!raw?.trim()) return [];
+
+  const words = raw.trim().split(/\s+/);
+  if ([12, 15, 18, 21, 24].includes(words.length)) {
+    return { mnemonic: words.join(' ') };
+  }
+
+  const privateKey = raw.trim().startsWith('0x')
+    ? raw.trim()
+    : `0x${raw.trim()}`;
+
+  if (!/^0x[0-9a-fA-F]{64}$/.test(privateKey)) {
+    throw new Error('PRIVATE_KEY is neither a valid mnemonic nor a 32-byte hex key');
+  }
+
+  return [privateKey];
 }
 
 const accounts = resolveAccounts();
@@ -34,5 +48,5 @@ const config: HardhatUserConfig = {
     }
   }
 };
-
+ 
 export default config;
