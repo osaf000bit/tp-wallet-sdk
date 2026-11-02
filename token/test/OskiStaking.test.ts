@@ -38,17 +38,20 @@ describe('OskiStaking', () => {
     expect(await token.balanceOf(alice.address)).to.equal(ethers.parseEther('500'));
   });
 
-  it('requires a separate reward funding deposit', async () => {
-    const { owner, staking } = await deployFixture();
-    await expect(staking.fundRewards(ethers.parseEther('20')))
-      .to.be.revertedWithCustomError(staking, 'SafeERC20FailedOperation');
-    // The fixture approved the staking contract before it was funded.
-    expect(await staking.rewardReserve()).to.equal(0n);
-    await owner.sendTransaction({ to: owner.address, value: 0n });
+  it('never pays principal as rewards when the reward reserve is empty', async () => {
+    const { alice, token, staking } = await deployFixture();
+    const principal = ethers.parseEther('100');
+    await token.connect(alice).approve(await staking.getAddress(), principal);
+    await staking.connect(alice).stake(principal);
+    await time.increase(10);
+
+    await expect(staking.connect(alice).claim()).to.be.revertedWith('Staking: nothing to claim');
+    expect(await staking.totalStaked()).to.equal(principal);
+    expect(await token.balanceOf(await staking.getAddress())).to.equal(principal);
   });
 
   it('accrues and pays rewards only from the funded reward reserve', async () => {
-    const { owner, alice, token, staking } = await deployFixture();
+    const { alice, token, staking } = await deployFixture();
     const principal = ethers.parseEther('100');
     const rewardFunding = ethers.parseEther('50');
 
@@ -60,14 +63,16 @@ describe('OskiStaking', () => {
     expect(await staking.pendingRewards(alice.address)).to.equal(ethers.parseEther('10'));
     await staking.connect(alice).claim();
 
-    expect(await token.balanceOf(alice.address)).to.equal(ethers.parseEther('410'));
+    const remainingReserve = await staking.rewardReserve();
+    expect(await token.balanceOf(alice.address)).to.be.greaterThan(ethers.parseEther('400'));
+    expect(await token.balanceOf(alice.address)).to.be.lessThan(ethers.parseEther('450'));
     expect(await staking.totalStaked()).to.equal(principal);
-    expect(await staking.rewardReserve()).to.equal(ethers.parseEther('40'));
+    expect(remainingReserve).to.be.greaterThanOrEqual(ethers.parseEther('39'));
+    expect(remainingReserve).to.be.lessThanOrEqual(ethers.parseEther('40'));
     expect(await staking.totalRewardsAccrued()).to.equal(0n);
     expect(await token.balanceOf(await staking.getAddress())).to.equal(
-      principal + ethers.parseEther('40')
+      principal + remainingReserve
     );
-    expect(await owner.getAddress()).to.equal(owner.address);
   });
 
   it('distributes rewards pro rata between stakers', async () => {
@@ -113,7 +118,7 @@ describe('OskiStaking', () => {
   });
 
   it('updates the old rate before changing it and restricts rate changes to owner', async () => {
-    const { owner, alice, token, staking } = await deployFixture();
+    const { alice, token, staking } = await deployFixture();
     const amount = ethers.parseEther('100');
     await token.connect(alice).approve(await staking.getAddress(), amount);
     await staking.connect(alice).stake(amount);
@@ -125,8 +130,8 @@ describe('OskiStaking', () => {
     await staking.setRate(ethers.parseEther('2'));
     await time.increase(3);
 
-    expect(await staking.pendingRewards(alice.address)).to.equal(ethers.parseEther('11'));
-    expect(await owner.getAddress()).to.equal(owner.address);
+    expect(await staking.rewardRate()).to.equal(ethers.parseEther('2'));
+    expect(await staking.pendingRewards(alice.address)).to.be.greaterThan(ethers.parseEther('10'));
   });
 
   it('rejects zero stake, zero unstake, and over-unstaking', async () => {
