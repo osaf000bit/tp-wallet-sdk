@@ -1,12 +1,13 @@
 {
   "name": "shos-token",
   "version": "1.0.0",
-  "description": "SHOS BEP-20 token for BNB Smart Chain (ERC20 + mint/burn + Ownable) with Hardhat tests.",
+  "description": "BEP-20 token and separately funded OSKI staking contracts for BNB Smart Chain.",
   "license": "MIT",
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
-    "coverage": "hardhat coverage"
+    "coverage": "hardhat coverage",
+    "deploy:staking:testnet": "hardhat run scripts/deploy-staking.ts --network bscTestnet"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
